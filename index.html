@@ -1,720 +1,558 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TPN Calculator — Total Parenteral Nutrition</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        display: ['Space Grotesk', 'sans-serif'],
-                        body: ['Plus Jakarta Sans', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        :root {
-            --bg: #F1F5F9;
-            --card: #FFFFFF;
-            --text: #0F172A;
-            --muted: #64748B;
-            --accent: #0F766E;
-            --accent-light: #F0FDFA;
-            --border: #E2E8F0;
-            --warn: #D97706;
-            --warn-bg: #FFFBEB;
-            --danger: #DC2626;
-            --danger-bg: #FEF2F2;
-            --pharm-bg: #F0FDF4;
-        }
-        * { box-sizing: border-box; }
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            margin: 0;
-        }
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background:
-                radial-gradient(ellipse at 15% 0%, rgba(15,118,110,0.05) 0%, transparent 50%),
-                radial-gradient(ellipse at 85% 100%, rgba(15,118,110,0.04) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: 0;
-        }
-        .font-display { font-family: 'Space Grotesk', sans-serif; }
-
-        /* Inputs */
-        .inp {
-            width: 100%;
-            padding: 0.5rem 0.75rem;
-            border: 1.5px solid var(--border);
-            border-radius: 0.5rem;
-            font-size: 0.875rem;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            transition: border-color 0.2s, box-shadow 0.2s;
-            background: #fff;
-            color: var(--text);
-            -moz-appearance: textfield;
-        }
-        .inp:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(15,118,110,0.1);
-        }
-        .inp::-webkit-outer-spin-button,
-        .inp::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        select.inp { cursor: pointer; }
-
-        /* Cards */
-        .card {
-            background: var(--card);
-            border-radius: 0.75rem;
-            border: 1px solid var(--border);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
-            transition: box-shadow 0.2s;
-        }
-        .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
-
-        /* Section headers */
-        .shdr {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding-bottom: 0.75rem;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 1rem;
-        }
-        .shdr .ib {
-            width: 2rem; height: 2rem;
-            border-radius: 0.5rem;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 0.8rem; flex-shrink: 0;
-        }
-
-        /* Value rows */
-        .vr { display: flex; justify-content: space-between; align-items: baseline; padding: 0.35rem 0; }
-        .vl { font-size: 0.8rem; color: var(--muted); }
-        .vn { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 0.9375rem; color: var(--text); }
-        .vu { font-size: 0.7rem; color: var(--muted); margin-left: 0.25rem; font-weight: 400; }
-
-        /* Glucose bar */
-        .gbar { display: flex; height: 1.75rem; border-radius: 0.375rem; overflow: hidden; }
-        .gbar > div {
-            display: flex; align-items: center; justify-content: center;
-            font-size: 0.65rem; font-weight: 700; color: #fff;
-            transition: width 0.4s ease; min-width: 0; overflow: hidden;
-            white-space: nowrap; padding: 0 0.25rem;
-        }
-
-        /* Pharmacy table */
-        .ptbl { width: 100%; border-collapse: collapse; }
-        .ptbl th {
-            background: #ECFDF5; padding: 0.6rem 0.875rem;
-            text-align: left; font-size: 0.7rem; font-weight: 700;
-            text-transform: uppercase; letter-spacing: 0.05em;
-            color: #065F46; border-bottom: 2px solid #A7F3D0;
-        }
-        .ptbl td { padding: 0.55rem 0.875rem; border-bottom: 1px solid #D1FAE5; font-size: 0.85rem; }
-        .ptbl tr:last-child td { border-bottom: none; }
-        .ptbl .tot td { background: #ECFDF5; font-weight: 700; border-top: 2px solid #A7F3D0; border-bottom: none; }
-
-        /* Warning / Error cards */
-        .wcard {
-            background: var(--warn-bg); border: 1px solid #FDE68A;
-            border-left: 4px solid var(--warn); border-radius: 0.5rem;
-            padding: 0.7rem 1rem; margin-bottom: 0.5rem;
-            font-size: 0.8rem; color: #92400E;
-            display: flex; align-items: flex-start; gap: 0.5rem;
-        }
-        .ecard {
-            background: var(--danger-bg); border: 1px solid #FECACA;
-            border-left: 4px solid var(--danger); border-radius: 0.5rem;
-            padding: 0.7rem 1rem; margin-bottom: 0.5rem;
-            font-size: 0.8rem; color: #991B1B;
-            display: flex; align-items: flex-start; gap: 0.5rem;
-        }
-
-        /* Electrolyte mini-cards */
-        .ecard-mini {
-            background: #fff; border-radius: 0.625rem;
-            border: 1px solid var(--border); padding: 0.75rem;
-            text-align: center; transition: transform 0.15s, box-shadow 0.15s;
-        }
-        .ecard-mini:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.07); }
-        .ecard-mini .elabel { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.25rem; }
-        .ecard-mini .eval { font-family: 'Space Grotesk', sans-serif; font-size: 1.25rem; font-weight: 700; line-height: 1.2; }
-        .ecard-mini .eunit { font-size: 0.65rem; color: var(--muted); font-weight: 500; }
-
-        /* Sidebar sticky */
-        @media (min-width: 1024px) {
-            .sidebar { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; }
-        }
-        .sidebar::-webkit-scrollbar { width: 4px; }
-        .sidebar::-webkit-scrollbar-track { background: transparent; }
-        .sidebar::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 2px; }
-
-        /* Animations */
-        @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-        .anim { animation: fadeUp 0.35s ease-out forwards; }
-        .d1 { animation-delay:.05s; opacity:0; }
-        .d2 { animation-delay:.1s; opacity:0; }
-        .d3 { animation-delay:.15s; opacity:0; }
-        .d4 { animation-delay:.2s; opacity:0; }
-        .d5 { animation-delay:.25s; opacity:0; }
-        @keyframes pulse-val { 0%{background:rgba(15,118,110,0.1)} 100%{background:transparent} }
-        .vpulse { animation: pulse-val 0.6s ease-out; border-radius: 0.25rem; }
-
-        /* Print */
-        @media print {
-            body { background: #fff; }
-            body::before { display: none; }
-            header, .sidebar, footer, .no-print { display: none !important; }
-            .results-area { margin: 0 !important; padding: 0 !important; }
-            .card { box-shadow: none; border: 1px solid #bbb; break-inside: avoid; margin-bottom: 0.5rem; }
-            .pharm-card { border: 2px solid #065F46 !important; }
-            .anim { animation: none; opacity: 1; }
-        }
-
-        /* Responsive label helper */
-        .field-unit { position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); font-size: 0.7rem; color: #94A3B8; font-weight: 500; pointer-events: none; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>TPN Calculator</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root{--pri:#115E59;--pri-l:#F0FDFA;--acc:#0F766E;--bg:#F1F5F9;--card:#fff;--tx:#0F172A;--mut:#64748B;--brd:#E2E8F0;--warn:#D97706;--warn-bg:#FFFBEB;--err:#DC2626;--err-bg:#FEF2F2;--pharm:#F0FDF4;--pharm-b:#A7F3D0}
+*{box-sizing:border-box;margin:0}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--tx);-webkit-text-size-adjust:100%}
+.fd{font-family:'Space Grotesk',sans-serif}
+.inp{width:100%;padding:5px 8px;border:1.5px solid var(--brd);border-radius:6px;font-size:13px;font-family:inherit;color:var(--tx);background:#fff;transition:border-color .15s,box-shadow .15s;-moz-appearance:textfield}
+.inp:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 2.5px rgba(15,118,110,.1)}
+.inp::-webkit-outer-spin-button,.inp::-webkit-inner-spin-button{-webkit-appearance:none}
+select.inp{cursor:pointer;padding-right:6px}
+.unit{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:10px;color:#94A3B8;pointer-events:none;font-weight:500}
+.lbl{display:block;font-size:11px;font-weight:600;color:var(--mut);margin-bottom:2px;line-height:1.2}
+.card{background:var(--card);border-radius:10px;border:1px solid var(--brd);box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:8px;overflow:hidden}
+.card-hdr{display:flex;align-items:center;padding:10px 12px;cursor:pointer;gap:8px;min-height:42px;user-select:none;-webkit-tap-highlight-color:transparent}
+.card-hdr:active{background:#F8FAFC}
+.card-body{padding:0 12px 12px}
+.chev{font-size:10px;color:#94A3B8;transition:transform .2s;flex-shrink:0;width:14px;text-align:center}
+.chev.open{transform:rotate(90deg)}
+.pname{font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ptag{font-size:11px;color:var(--mut);flex-shrink:0}
+.ptag-v{font-size:11px;font-weight:700;color:var(--acc);flex-shrink:0}
+.rmbtn{width:26px;height:26px;border:none;background:transparent;color:#CBD5E1;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:12px;transition:all .15s}
+.rmbtn:hover{background:#FEE2E2;color:#EF4444}
+.rm-confirm{display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--err-bg);border-top:1px solid #FECACA;font-size:11px;color:#991B1B}
+.rm-confirm button{border:none;border-radius:4px;padding:2px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit}
+.rm-confirm .yes{background:#DC2626;color:#fff}
+.rm-confirm .no{background:#fff;color:#64748B;border:1px solid #E2E8F0}
+.addon-row{display:flex;gap:4px;align-items:center;margin-bottom:4px}
+.addon-row select{flex:1;min-width:0}
+.addon-row .inp{width:52px;flex-shrink:0;text-align:center;padding:5px 4px}
+.addon-row .aunit{font-size:10px;color:#94A3B8;flex-shrink:0}
+.addon-rm{width:22px;height:22px;border:none;background:transparent;color:#CBD5E1;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;flex-shrink:0}
+.addon-rm:hover{background:#FEE2E2;color:#EF4444}
+.add-btn{border:none;background:transparent;color:var(--acc);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;padding:2px 0;display:flex;align-items:center;gap:3px}
+.add-btn:hover{text-decoration:underline}
+.sec-t{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94A3B8;margin:8px 0 4px;padding-bottom:3px;border-bottom:1px solid #F1F5F9}
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px}
+.sr{display:flex;justify-content:space-between;align-items:baseline;padding:2px 0}
+.sl{font-size:11px;color:var(--mut)}
+.sv{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;color:var(--tx)}
+.su{font-size:9px;color:#94A3B8;margin-left:2px;font-weight:400}
+.elec-row{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:4px 0}
+.elec-c{text-align:center;padding:4px 2px;border-radius:6px;background:#F8FAFC;border:1px solid #F1F5F9}
+.elec-c .el{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px}
+.elec-c .ev{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;line-height:1.2}
+.elec-c .eu{font-size:9px;color:var(--mut)}
+.pr{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid #D1FAE5;font-size:12px}
+.pr:last-child{border-bottom:none}
+.pr-l{color:#065F46;font-size:11px}
+.pr-v{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;color:var(--tx)}
+.pr-t{font-weight:800;border-top:2px solid #A7F3D0;border-bottom:none;margin-top:2px;padding-top:4px}
+.split-box{background:#F0FDFA;border:2px solid #5EEAD4;border-radius:8px;padding:8px;margin-top:6px}
+.split-title{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#0F766E;margin-bottom:6px}
+.split-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.split-bag{background:#fff;border:1px solid #99F6E4;border-radius:6px;padding:6px}
+.split-bag-t{font-size:10px;font-weight:700;color:#0D9488;text-align:center;margin-bottom:4px}
+.split-row{display:flex;justify-content:space-between;font-size:10px;padding:1px 0;color:#374151}
+.split-row .fd{font-weight:600}
+.split-tot{display:flex;justify-content:space-between;font-size:10px;font-weight:700;padding-top:3px;margin-top:2px;border-top:1px solid #99F6E4;color:#0F766E}
+.wmsg{background:var(--warn-bg);border:1px solid #FDE68A;border-left:3px solid var(--warn);border-radius:6px;padding:6px 8px;margin-top:6px;font-size:11px;color:#92400E;display:flex;align-items:flex-start;gap:6px;line-height:1.4}
+.emsg{background:var(--err-bg);border:1px solid #FECACA;border-left:3px solid var(--err);border-radius:6px;padding:6px 8px;margin-top:6px;font-size:11px;color:#991B1B;display:flex;align-items:flex-start;gap:6px;line-height:1.4}
+.empty-st{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;color:#94A3B8;text-align:center}
+.empty-st i{font-size:32px;margin-bottom:12px;color:#CBD5E1}
+.loss-sel{display:flex;border:1px solid var(--brd);border-radius:6px;overflow:hidden;align-self:stretch}
+.loss-sel button{border:none;padding:4px 0;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;flex:1;background:#fff;color:#64748B}
+.loss-sel button.on{background:var(--pri);color:#fff}
+.gact{border:none;padding:5px 10px;font-size:11px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;gap:4px}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fi .25s ease-out}
+@media print{
+.no-print{display:none!important}
+#print-view{display:block!important}
+body{background:#fff}
+@page{size:landscape;margin:10mm}
+.pt{width:100%;border-collapse:collapse;font-size:9px;font-family:'Plus Jakarta Sans',sans-serif}
+.pt th,.pt td{border:1px solid #bbb;padding:3px 5px;text-align:center}
+.pt th:first-child,.pt td:first-child{position:sticky;left:0;background:#fff;z-index:2;text-align:left;font-weight:600;min-width:120px;max-width:150px}
+.pt thead th{background:#E2E8F0;font-weight:700;font-size:8px;text-transform:uppercase;letter-spacing:.04em;vertical-align:bottom}
+.pt thead th:first-child{background:#fff}
+.pt .gr td{background:#F1F5F9;font-weight:700;font-size:8px;text-transform:uppercase;letter-spacing:.04em;text-align:left}
+.pt .tr td{font-weight:700;background:#F8FAFC}
+.pt .err-cell{color:#DC2626;font-style:italic;font-weight:400;font-size:8px}
+.ph{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;margin-bottom:4px}
+.ps{font-size:10px;color:#64748B;margin-bottom:12px}
+}
+</style>
 </head>
-<body class="relative">
+<body>
 
-    <!-- Header -->
-    <header class="bg-white border-b border-slate-200 relative z-10">
-        <div class="max-w-[1480px] mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background:var(--accent);">
-                    <i class="fas fa-syringe text-white text-sm"></i>
-                </div>
-                <div>
-                    <h1 class="font-display font-bold text-lg leading-tight" style="color:var(--text);">TPN Calculator</h1>
-                    <p class="text-xs" style="color:var(--muted);">Total Parenteral Nutrition — Clinical Decision Support</p>
-                </div>
-            </div>
-            <div class="hidden sm:flex items-center gap-2 text-xs" style="color:#94A3B8;">
-                <i class="fas fa-shield-halved"></i>
-                <span>Validated Formulas</span>
-            </div>
-        </div>
-    </header>
+<header class="no-print" style="background:#fff;border-bottom:1px solid var(--brd);position:sticky;top:0;z-index:20">
+<div style="max-width:540px;margin:0 auto;padding:8px 12px">
+<div style="display:flex;align-items:center;gap:6px">
+<div style="width:28px;height:28px;border-radius:7px;background:var(--pri);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fas fa-syringe" style="color:#fff;font-size:11px"></i></div>
+<span class="fd" style="font-weight:700;font-size:15px">TPN</span>
+<input type="date" id="g-date" class="inp" style="width:120px;padding:4px 6px;font-size:11px">
+<select id="g-brand" class="inp" style="flex:1;padding:4px 6px;font-size:11px">
+<option value="Smofkabevin">Smofkabiven</option>
+<option value="Kabevin">Kabiven</option>
+<option value="Periolimel">Periolimel</option>
+</select>
+<div style="flex:1"></div>
+<button class="gact" style="background:var(--pri);color:#fff" id="btn-add"><i class="fas fa-plus"></i> Patient</button>
+<button class="gact" style="background:#475569;color:#fff" id="btn-print"><i class="fas fa-print"></i> Print</button>
+</div>
+</div>
+</header>
 
-    <!-- Main -->
-    <main class="max-w-[1480px] mx-auto px-4 sm:px-6 py-6 relative z-10">
-        <div class="flex flex-col lg:flex-row gap-6">
+<main class="no-print" style="max-width:540px;margin:0 auto;padding:8px 12px 40px">
+<div id="pc"></div>
+<div id="empty-st" class="empty-st" style="display:none">
+<i class="fas fa-user-plus"></i>
+<div style="font-size:13px;font-weight:600;margin-bottom:4px;color:#64748B">No patients yet</div>
+<div style="font-size:11px">Tap "Patient" above to add one</div>
+</div>
+</main>
 
-            <!-- Sidebar: Inputs -->
-            <aside class="sidebar w-full lg:w-[350px] flex-shrink-0 space-y-4">
+<div id="print-view" style="display:none"></div>
 
-                <!-- Parameters Card -->
-                <div class="card p-5">
-                    <div class="shdr">
-                        <div class="ib" style="background:var(--accent-light);color:var(--accent);"><i class="fas fa-sliders"></i></div>
-                        <div>
-                            <h2 class="font-display font-semibold text-sm">Parameters</h2>
-                            <p class="text-xs" style="color:var(--muted);">Enter patient data</p>
-                        </div>
-                    </div>
+<script>
+var B={
+Smofkabevin:{l:'Smofkabiven',g:13,a:10,li:20,na:.079,k:.06,cl:.07,ca:.005},
+Kabevin:{l:'Kabiven',g:11,a:11.3,li:20,na:.1,k:.08,cl:.156,ca:.006},
+Periolimel:{l:'Periolimel',g:18.75,a:6.3,li:15,na:.0525,k:.04,cl:.0617,ca:.005}
+};
+var AT={
+na3:{l:'Na 3%',na:.513,k:0},
+na09:{l:'Na 0.9%',na:.154,k:0},
+k:{l:'K',na:0,k:2},
+other:{l:'Other',na:0,k:0}
+};
 
-                    <!-- Brand -->
-                    <div class="mb-3.5">
-                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">TPN Brand</label>
-                        <select id="brand" class="inp" onchange="calculate()">
-                            <option value="Smofkabevin">Smofkabiven</option>
-                            <option value="Kabevin">Kabiven</option>
-                            <option value="Periolimel">Periolimel</option>
-                        </select>
-                    </div>
+var S={date:new Date().toISOString().split('T')[0],brand:'Smofkabevin',pts:[],nid:1};
 
-                    <!-- Weight -->
-                    <div class="mb-3.5">
-                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">Patient Weight</label>
-                        <div class="relative">
-                            <input type="number" id="weight" class="inp" style="padding-right:2.5rem;" value="3.5" step="0.1" min="0.1" oninput="calculate()">
-                            <span class="field-unit">kg</span>
-                        </div>
-                    </div>
+function f(v,d){return(v==null||isNaN(v))?'—':Number(v).toFixed(d)}
+function gp(id){return S.pts.find(function(p){return p.id===id})}
+function $(s){return document.querySelector(s)}
+function $$(s){return document.querySelectorAll(s)}
+function escH(s){return(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
 
-                    <!-- TPN Volume Target -->
-                    <div class="mb-3.5">
-                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">TPN Volume Target (Base)</label>
-                        <div class="relative">
-                            <input type="number" id="tpn_volume_target" class="inp" style="padding-right:2.5rem;" value="300" step="1" min="1" oninput="calculate()">
-                            <span class="field-unit">ml</span>
-                        </div>
-                    </div>
+function calc(p){
+var b=B[S.brand],el=p.loss;
+var aoV=p.ao.reduce(function(s,a){return s+(parseFloat(a.v)||0)},0);
+var tv=(p.fi*p.w)-p.tv-aoV;
+var errs=[];
+if(!p.w||p.w<=0)errs.push('Weight must be a positive number.');
+if(!p.fi||p.fi<=0)errs.push('Fluid input must be a positive number.');
+if(tv<=0&&p.w>0&&p.fi>0)errs.push('TPN target volume is zero or negative. Increase fluid input or decrease treatment/add-on volumes.');
+if(errs.length)return{errs:errs,tv:0};
 
-                    <!-- Target GIR -->
-                    <div class="mb-3.5">
-                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">Target GIR</label>
-                        <div class="relative">
-                            <input type="number" id="target_gir" class="inp" style="padding-right:5.5rem;" value="8" step="0.1" min="0" oninput="calculate()">
-                            <span class="field-unit">mg/kg/min</span>
-                        </div>
-                    </div>
+var lv=(p.ld*p.w*100)/b.li;
+var av=(p.ad*p.w*100)/b.a;
+var gv=tv-lv-av;
+if(gv<=0)return{errs:['Lipid + Amino Acid volumes ('+f(lv+av,1)+' ml) exceed TPN target ('+f(tv,1)+' ml).'],tv:tv};
 
-                    <!-- Lipid Dose -->
-                    <div class="mb-3.5">
-                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">Lipid Dose</label>
-                        <div class="relative">
-                            <input type="number" id="lipid_dose" class="inp" style="padding-right:2.5rem;" value="3" step="0.1" min="0" oninput="calculate()">
-                            <span class="field-unit">g/kg</span>
-                        </div>
-                    </div>
+var gg=p.gir*1440*p.w/1000;
+var tgp=(gg/gv)*100;
 
-                    <!-- Amino Dose -->
-                    <div class="mb-3.5">
-                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">Amino Acid Dose</label>
-                        <div class="relative">
-                            <input type="number" id="amino_dose" class="inp" style="padding-right:2.5rem;" value="2.5" step="0.1" min="0" oninput="calculate()">
-                            <span class="field-unit">g/kg</span>
-                        </div>
-                    </div>
+var vb=0,v5=0,v50=0;
+if(tgp>=b.g&&tgp<=50){vb=Math.abs(tgp-50)/(50-b.g)*gv;v50=Math.abs(tgp-b.g)/(50-b.g)*gv}
+else if(tgp>=5&&tgp<b.g){v5=Math.abs(tgp-50)/45*gv;v50=Math.abs(tgp-5)/45*gv}
+else if(tgp<5){v5=gv}
+else{v50=gv}
 
-                    <div class="border-t border-slate-100 my-3.5"></div>
+var Na=b.na*av,K=b.k*av,Cl=b.cl*av,Ca=b.ca*av;
+var aNa=0,aK=0;
+p.ao.forEach(function(a){var vol=parseFloat(a.v)||0;var t=AT[a.t];if(t){aNa+=t.na*vol;aK+=t.k*vol}});
+Na+=aNa;K+=aK;
 
-                    <!-- Total Enteral Feeding -->
-                    <div class="mb-3.5">
-                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">Total Enteral Feeding</label>
-                        <div class="relative">
-                            <input type="number" id="total_feeding" class="inp" style="padding-right:2.5rem;" value="0" step="1" min="0" oninput="calculate()">
-                            <span class="field-unit">ml</span>
-                        </div>
-                    </div>
+var agir=gg*1000/(1440*p.w);
+var gpt=(gg*100)/tv;
+var en=((p.ld*p.w*9)+(p.ad*p.w*4)+(gg*3.4))/p.w;
+var ce=gg*3.4,le=p.ld*p.w*9;
+var lcr=(ce+le)>0?(le/(ce+le))*100:0;
+var ap=(p.ad*p.w)/tv*100;
+var ng=(p.ad*p.w)/6.25;
+var npc=ng>0?((p.ld*p.w*9)+(gg*3.4))/ng:0;
+var osm=((p.ad*p.w*10)+(gg*5)+((Na+K)*2)+(Ca*2*1.4))/(tv/1000);
 
-                    <!-- Expected Loss -->
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">
-                            Expected Loss (Priming)
-                            <span class="font-normal" style="color:var(--muted);"> — pharmacy only</span>
-                        </label>
-                        <div class="relative">
-                            <input type="number" id="expected_loss" class="inp" style="padding-right:2.5rem;" value="15" step="1" min="0" oninput="calculate()">
-                            <span class="field-unit">ml</span>
-                        </div>
-                    </div>
-                </div>
+var lm=1+(el/tv);
+var pl=Math.round(lv*lm);
+var pa=Math.round(av*lm);
+var pb=Math.round(vb*lm);
+var p5=Math.round(v5*lm);
+var p50=Math.round(v50*lm);
+var pao=p.ao.map(function(a){return{t:a.t,v:Math.round((parseFloat(a.v)||0)*lm)}});
+var paot=pao.reduce(function(s,a){return s+a.v},0);
+var ptot=pl+pa+pb+p5+p50+paot;
 
-                <!-- Brand Constants Card -->
-                <div class="card p-5">
-                    <div class="shdr">
-                        <div class="ib bg-slate-100 text-slate-600"><i class="fas fa-flask"></i></div>
-                        <h2 class="font-display font-semibold text-sm">Brand Constants</h2>
-                    </div>
-                    <div id="brand-constants"></div>
-                </div>
-            </aside>
+var split=tv>151&&tv<302;
 
-            <!-- Results Area -->
-            <div class="results-area flex-1 min-w-0 space-y-5">
+var w=[];
+if(tgp<5)w.push('This is the lowest GIR you can obtain.');
+if(tgp>50)w.push('Try increasing TPN volume. This is the highest GIR you can obtain.');
+if(gpt>12)w.push('Consider using central line OR lower the concentration by lowering the GIR or increasing total volume.');
+var fmk=p.tf/p.w;
+if(fmk>=100)w.push('PN can be discontinued when enteral feeds reach 100 to 120 mL/kg/d.');
+if(fmk>60&&fmk<=99)w.push('Condensing PN to 80 to 90 mL/kg/d when enteral feeds reach 60 mL/kg/d helps maintain appropriate caloric intake. This can be accomplished by decreasing lipids to 1 g/kg/d, continuing full goal protein, and leaving dextrose concentrations the same.');
 
-                <!-- Error Container -->
-                <div id="error-box" class="hidden"></div>
+return{tv:tv,lv:lv,av:av,gv:gv,gg:gg,tgp:tgp,vb:vb,v5:v5,v50:v50,Na:Na,K:K,Cl:Cl,Ca:Ca,aNa:aNa,aK:aK,agir:agir,gpt:gpt,en:en,lcr:lcr,ap:ap,npc:npc,osm:osm,pl:pl,pa:pa,pb:pb,p5:p5,p50:p50,pao:pao,paot:paot,ptot:ptot,lm:lm,split:split,w:w,fmk:fmk,errs:[]};
+}
 
-                <!-- Patient Clinical Summary -->
-                <div class="card p-5 anim d1">
-                    <div class="shdr">
-                        <div class="ib" style="background:var(--accent-light);color:var(--accent);"><i class="fas fa-heart-pulse"></i></div>
-                        <div>
-                            <h2 class="font-display font-semibold text-sm">Patient Clinical Summary</h2>
-                            <p class="text-xs" style="color:var(--muted);">Base quantities — what the patient receives</p>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
-                        <div>
-                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 mt-1">Base Volumes</h3>
-                            <div class="vr"><span class="vl">Feeding Volume</span><span><span class="vn" id="r-feed-kg">—</span><span class="vu">ml/kg</span></span></div>
-                            <div class="vr"><span class="vl">Lipid Volume</span><span><span class="vn" id="r-lip-vol">—</span><span class="vu">ml</span></span></div>
-                            <div class="vr"><span class="vl">Amino Acid Volume</span><span><span class="vn" id="r-aa-vol">—</span><span class="vu">ml</span></span></div>
-                            <div class="vr"><span class="vl">Glucose Volume</span><span><span class="vn" id="r-glu-vol">—</span><span class="vu">ml</span></span></div>
-                            <div class="vr"><span class="vl">Glucose (grams)</span><span><span class="vn" id="r-glu-g">—</span><span class="vu">g</span></span></div>
-                            <div class="vr"><span class="vl">Target Glucose Concentration</span><span><span class="vn" id="r-tgt-glu-pct">—</span><span class="vu">%</span></span></div>
-                        </div>
-                        <div>
-                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 mt-1">Nutritional Statistics</h3>
-                            <div class="vr"><span class="vl">Actual GIR</span><span><span class="vn" id="r-act-gir">—</span><span class="vu">mg/kg/min</span></span></div>
-                            <div class="vr"><span class="vl">Glucose % (of TPN)</span><span><span class="vn" id="r-glu-pct-tot">—</span><span class="vu">%</span></span></div>
-                            <div class="vr"><span class="vl">Energy</span><span><span class="vn" id="r-energy">—</span><span class="vu">kcal/kg</span></span></div>
-                            <div class="vr"><span class="vl">Lipid : Carb Ratio</span><span><span class="vn" id="r-lc-ratio">—</span><span class="vu">%</span></span></div>
-                            <div class="vr"><span class="vl">Amino Acid % (of TPN)</span><span><span class="vn" id="r-aa-pct">—</span><span class="vu">%</span></span></div>
-                            <div class="vr"><span class="vl">NPC:N Ratio</span><span><span class="vn" id="r-npcn">—</span><span class="vu">kcal:N</span></span></div>
-                            <div class="vr"><span class="vl">Osmolarity</span><span><span class="vn" id="r-osm">—</span><span class="vu">mOsm/L</span></span></div>
-                        </div>
-                    </div>
-                </div>
+function renderAll(){
+var c=$('#pc'),e=$('#empty-st');
+if(!S.pts.length){c.innerHTML='';e.style.display='flex';return}
+e.style.display='none';
+c.innerHTML=S.pts.map(renderCard).join('');
+}
 
-                <!-- Glucose Mixing -->
-                <div class="card p-5 anim d2">
-                    <div class="shdr">
-                        <div class="ib bg-sky-50 text-sky-700"><i class="fas fa-vial"></i></div>
-                        <div>
-                            <h2 class="font-display font-semibold text-sm">Glucose Source Mixing</h2>
-                            <p class="text-xs" style="color:var(--muted);">Pearson Square — base volumes</p>
-                        </div>
-                    </div>
-                    <div id="glu-mix-area"></div>
-                </div>
+function renderCard(p){
+var r=p.r;
+var hasErr=r&&r.errs&&r.errs.length;
+var hasWarn=r&&!r.errs.length&&r.w&&r.w.length;
+var tvDisp=hasErr?'—':(r?Math.round(r.tv)+' ml':'— ml');
+var wDisp=p.w?f(p.w,1):'—';
+return'<div class="card patient-card anim" data-id="'+p.id+'">'+
+'<div class="card-hdr" data-act="toggle">'+
+'<i class="fas fa-chevron-right chev'+(p.col?'':' open')+'"></i>'+
+'<span class="pname">'+escH(p.n||'Patient '+p.id)+'</span>'+
+'<span class="ptag">'+wDisp+' kg</span>'+
+'<span class="ptag-v">'+tvDisp+'</span>'+
+(hasWarn?'<i class="fas fa-exclamation-triangle" style="color:#D97706;font-size:11px;flex-shrink:0"></i>':'')+
+(hasErr?'<i class="fas fa-times-circle" style="color:#DC2626;font-size:11px;flex-shrink:0"></i>':'')+
+'<button class="rmbtn" data-act="rm"><i class="fas fa-times"></i></button>'+
+'</div>'+
+'<div class="rm-confirm" style="display:'+(p.rc?'flex':'none')+'" data-id="'+p.id+'">'+
+'<span style="flex:1">Remove this patient?</span>'+
+'<button class="yes" data-act="rm-y">Yes</button>'+
+'<button class="no" data-act="rm-n">No</button>'+
+'</div>'+
+'<div class="card-body" style="display:'+(p.col?'none':'block')+'">'+
+'<div style="margin-bottom:5px"><label class="lbl">Patient Name</label><input class="inp" type="text" data-f="n" value="'+escH(p.n)+'" autocomplete="off"></div>'+
+'<div class="sg">'+
+'<div><label class="lbl">Weight</label><div class="relative"><input type="number" inputmode="decimal" class="inp" data-f="w" value="'+(p.w||'')+'" step="0.1" min="0"><span class="unit">kg</span></div></div>'+
+'<div><label class="lbl">Fluid Input</label><div class="relative"><input type="number" inputmode="numeric" class="inp" data-f="fi" value="'+(p.fi||'')+'" step="1" min="0"><span class="unit">ml/kg</span></div></div>'+
+'<div><label class="lbl">Treatment Vol</label><div class="relative"><input type="number" inputmode="numeric" class="inp" data-f="tv" value="'+(p.tv||'')+'" step="1" min="0"><span class="unit">ml</span></div></div>'+
+'<div><label class="lbl">Target GIR</label><div class="relative"><input type="number" inputmode="decimal" class="inp" data-f="gir" value="'+(p.gir||'')+'" step="0.1" min="0"><span class="unit">mg/kg/min</span></div></div>'+
+'<div><label class="lbl">Lipid Dose</label><div class="relative"><input type="number" inputmode="decimal" class="inp" data-f="ld" value="'+(p.ld||'')+'" step="0.1" min="0"><span class="unit">g/kg</span></div></div>'+
+'<div><label class="lbl">AA Dose</label><div class="relative"><input type="number" inputmode="decimal" class="inp" data-f="ad" value="'+(p.ad||'')+'" step="0.1" min="0"><span class="unit">g/kg</span></div></div>'+
+'</div>'+
+'<div style="display:flex;gap:8px;align-items:end">'+
+'<div style="flex:1"><label class="lbl">Enteral Feeding</label><div class="relative"><input type="number" inputmode="numeric" class="inp" data-f="tf" value="'+(p.tf||'')+'" step="1" min="0"><span class="unit">ml</span></div></div>'+
+'<div style="flex:1"><label class="lbl">Exp. Loss</label><div class="loss-sel" data-id="'+p.id+'"><button data-lv="10"'+(p.loss===10?' class="on"':'')+'>10 ml</button><button data-lv="20"'+(p.loss===20?' class="on"':'')+'>20 ml</button></div></div>'+
+'</div>'+
+'<div style="margin-top:8px">'+
+'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'+
+'<span class="lbl" style="margin:0">Add-ons</span>'+
+'<button class="add-btn" data-act="add-ao"><i class="fas fa-plus" style="font-size:9px"></i> Add</button>'+
+'</div>'+
+'<div id="ao-'+p.id+'">'+renderAO(p)+'</div>'+
+'</div>'+
+'<div id="res-'+p.id+'">'+renderRes(p)+'</div>'+
+'</div></div>';
+}
 
-                <!-- Electrolytes -->
-                <div class="card p-5 anim d3">
-                    <div class="shdr">
-                        <div class="ib bg-amber-50 text-amber-700"><i class="fas fa-bolt"></i></div>
-                        <div>
-                            <h2 class="font-display font-semibold text-sm">Electrolytes (from Amino Acid)</h2>
-                            <p class="text-xs" style="color:var(--muted);">Derived from amino acid base volume only</p>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="elec-grid"></div>
-                </div>
+function renderAO(p){
+if(!p.ao.length)return'<div style="font-size:11px;color:#CBD5E1;padding:2px 0">None</div>';
+return p.ao.map(function(a,i){
+return'<div class="addon-row" data-idx="'+i+'">'+
+'<select class="inp addon-type" data-idx="'+i+'">'+
+'<option value="na3"'+(a.t==='na3'?' selected':'')+'>Na 3%</option>'+
+'<option value="na09"'+(a.t==='na09'?' selected':'')+'>Na 0.9%</option>'+
+'<option value="k"'+(a.t==='k'?' selected':'')+'>K</option>'+
+'<option value="other"'+(a.t==='other'?' selected':'')+'>Other</option>'+
+'</select>'+
+'<input type="number" inputmode="numeric" class="inp addon-vol" data-idx="'+i+'" value="'+(a.v||'')+'" step="1" min="0">'+
+'<span class="aunit">ml</span>'+
+'<button class="addon-rm" data-act="rm-ao" data-idx="'+i+'"><i class="fas fa-times"></i></button>'+
+'</div>';
+}).join('');
+}
 
-                <!-- Clinical Warnings -->
-                <div id="warn-box" class="anim d4"></div>
+function renderRes(p){
+var r=p.r;
+if(!r)return'';
+if(r.errs.length)return r.errs.map(function(e){return'<div class="emsg"><i class="fas fa-triangle-exclamation" style="margin-top:2px;flex-shrink:0"></i><span>'+e+'</span></div>'}).join('');
+var b=B[S.brand];
+var h='<div class="sec-t">Clinical Summary</div>';
+h+='<div class="sg">';
+h+=sr('Actual GIR',f(r.agir,2),'mg/kg/min');
+h+=sr('Glucose %',f(r.gpt,2),'%');
+h+=sr('Energy',f(r.en,1),'kcal/kg');
+h+=sr('Lipid:Carb',f(r.lcr,1),'%');
+h+=sr('AA %',f(r.ap,2),'%');
+h+=sr('NPC:N',f(r.npc,1),'kcal:N');
+h+=sr('Osmolarity',f(r.osm,0),'mOsm/L');
+h+='</div>';
+h+='<div class="sec-t">Electrolytes</div>';
+h+='<div class="elec-row">';
+h+=ec('Na',r.Na,'#0F766E');
+h+=ec('K',r.K,'#7C3AED');
+h+=ec('Cl',r.Cl,'#0284C7');
+h+=ec('Ca',r.Ca,'#D97706');
+h+='</div>';
+h+='<div class="sec-t">Pharmacy Preparation</div>';
+h+='<div style="background:var(--pharm);border:1px solid var(--pharm-b);border-radius:8px;padding:8px">';
+h+=pr('Lipid ('+b.l+' '+b.li+'%)',r.pl);
+h+=pr('Amino Acid ('+b.l+' '+b.a+'%)',r.pa);
+if(r.pb>0)h+=pr('Glucose ('+b.l+' '+b.g+'%)',r.pb);
+if(r.p5>0)h+=pr('Glucose (D5W 5%)',r.p5);
+if(r.p50>0)h+=pr('Glucose (D50W 50%)',r.p50);
+r.pao.forEach(function(a){if(a.v>0)h+=pr('Add-on: '+AT[a.t].l,a.v)});
+h+='<div class="pr pr-t"><span class="pr-l">Total</span><span class="pr-v">'+r.ptot+' ml</span></div>';
+h+='</div>';
+if(r.split){
+var sv2=function(v){var a=Math.floor(v/2);return[a,v-a]};
+var b1l=sv2(r.pl),b1a=sv2(r.pa),b1b=sv2(r.pb),b15=sv2(r.p5),b150=sv2(r.p50);
+var b1ao=r.pao.map(function(a){return sv2(a.v)});
+var b1t=b1l[0]+b1a[0]+b1b[0]+b15[0]+b150[0]+b1ao.reduce(function(s,a){return s+a[0]},0);
+var b2t=b1l[1]+b1a[1]+b1b[1]+b15[1]+b150[1]+b1ao.reduce(function(s,a){return s+a[1]},0);
+h+='<div class="split-box"><div class="split-title"><i class="fas fa-layer-group"></i> Prepare as 2 Bags</div><div class="split-grid">';
+h+='<div class="split-bag"><div class="split-bag-t">Bag 1</div>';
+h+=spr('Lipid',b1l[0]);h+=spr('AA',b1a[0]);
+if(b1b[0]>0)h+=spr('Glu ('+b.g+'%)',b1b[0]);
+if(b15[0]>0)h+=spr('Glu (5%)',b15[0]);
+if(b150[0]>0)h+=spr('Glu (50%)',b150[0]);
+r.pao.forEach(function(a,i){if(b1ao[i][0]>0)h+=spr(AT[a.t].l,b1ao[i][0])});
+h+='<div class="split-tot"><span>Total</span><span>'+b1t+' ml</span></div></div>';
+h+='<div class="split-bag"><div class="split-bag-t">Bag 2</div>';
+h+=spr('Lipid',b1l[1]);h+=spr('AA',b1a[1]);
+if(b1b[1]>0)h+=spr('Glu ('+b.g+'%)',b1b[1]);
+if(b15[1]>0)h+=spr('Glu (5%)',b15[1]);
+if(b150[1]>0)h+=spr('Glu (50%)',b150[1]);
+r.pao.forEach(function(a,i){if(b1ao[i][1]>0)h+=spr(AT[a.t].l,b1ao[i][1])});
+h+='<div class="split-tot"><span>Total</span><span>'+b2t+' ml</span></div></div>';
+h+='</div></div>'}
+if(r.w.length)h+=r.w.map(function(w){return'<div class="wmsg"><i class="fas fa-exclamation-circle" style="margin-top:2px;flex-shrink:0"></i><span>'+w+'</span></div>'}).join('');
+return h;
+}
 
-                <!-- Pharmacy Preparation Sheet -->
-                <div class="card pharm-card p-5 anim d5" style="background:var(--pharm-bg);border-color:#A7F3D0;">
-                    <div class="flex items-start justify-between gap-4 mb-3">
-                        <div class="shdr flex-1" style="border-bottom:2px solid #A7F3D0;margin-bottom:0.75rem;padding-bottom:0.75rem;">
-                            <div class="ib bg-green-100 text-green-700"><i class="fas fa-mortar-pestle"></i></div>
-                            <div>
-                                <h2 class="font-display font-semibold text-sm text-green-900">Pharmacy Preparation Sheet</h2>
-                                <p class="text-xs text-green-700">Includes expected loss for priming / waste</p>
-                            </div>
-                        </div>
-                        <button onclick="window.print()" class="no-print flex-shrink-0 flex items-center gap-2 px-3.5 py-2 bg-green-700 hover:bg-green-800 active:bg-green-900 text-white text-xs font-semibold rounded-lg transition-colors" aria-label="Print pharmacy sheet">
-                            <i class="fas fa-print"></i> Print
-                        </button>
-                    </div>
-                    <div id="pharm-area"></div>
-                </div>
-            </div>
-        </div>
-    </main>
+function sr(l,v,u){return'<div class="sr"><span class="sl">'+l+'</span><span><span class="sv">'+v+'</span><span class="su">'+u+'</span></span></div>'}
+function ec(l,v,c){return'<div class="elec-c"><div class="el" style="color:'+c+'">'+l+'</div><div class="ev" style="color:'+c+'">'+f(v,2)+'</div><div class="eu">mmol</div></div>'}
+function pr(l,v){return'<div class="pr"><span class="pr-l">'+l+'</span><span class="pr-v">'+v+' ml</span></div>'}
+function spr(l,v){return'<div class="split-row"><span>'+l+'</span><span class="fd">'+v+' ml</span></div>'}
 
-    <!-- Disclaimer -->
-    <footer class="max-w-[1480px] mx-auto px-4 sm:px-6 py-6 relative z-10">
-        <p class="text-center text-xs" style="color:#94A3B8;">
-            <i class="fas fa-info-circle mr-1"></i>
-            For clinical decision support only. Verify all calculations independently before patient administration.
-        </p>
-    </footer>
+function updRes(id){
+var p=gp(id);if(!p)return;
+var el=$('#res-'+id);
+if(el)el.innerHTML=renderRes(p);
+updHdr(id);
+}
 
-    <script>
-    /* ===== Helper ===== */
-    function f(v, d) {
-        if (v === null || v === undefined || isNaN(v)) return '—';
-        return Number(v).toFixed(d);
-    }
+function updHdr(id){
+var p=gp(id);if(!p)return;
+var card=$('.patient-card[data-id="'+id+'"]');
+if(!card)return;
+var r=p.r;
+var hasErr=r&&r.errs&&r.errs.length;
+var hasWarn=r&&!r.errs.length&&r.w&&r.w.length;
+card.querySelector('.pname').textContent=p.n||'Patient '+p.id;
+card.querySelector('.ptag').textContent=(p.w?f(p.w,1):'—')+' kg';
+card.querySelector('.ptag-v').textContent=hasErr?'—':(r?Math.round(r.tv)+' ml':'— ml');
+var hdr=card.querySelector('.card-hdr');
+var icons=hdr.querySelectorAll('i.fa-exclamation-triangle,i.fa-times-circle');
+for(var i=0;i<icons.length;i++)icons[i].remove();
+if(hasWarn){var ic=document.createElement('i');ic.className='fas fa-exclamation-triangle';ic.style.cssText='color:#D97706;font-size:11px;flex-shrink:0';hdr.querySelector('.rmbtn').before(ic)}
+if(hasErr){var ic2=document.createElement('i');ic2.className='fas fa-times-circle';ic2.style.cssText='color:#DC2626;font-size:11px;flex-shrink:0';hdr.querySelector('.rmbtn').before(ic2)}
+}
 
-    /* ===== Main Calculation ===== */
-    function calculate() {
-        // Read inputs
-        const brand   = document.getElementById('brand').value;
-        const weight  = parseFloat(document.getElementById('weight').value);
-        const tpnVol  = parseFloat(document.getElementById('tpn_volume_target').value);
-        const tGIR    = parseFloat(document.getElementById('target_gir').value);
-        const lipDose = parseFloat(document.getElementById('lipid_dose').value);
-        const aaDose  = parseFloat(document.getElementById('amino_dose').value);
-        const totFeed = parseFloat(document.getElementById('total_feeding').value) || 0;
-        const expLoss = parseFloat(document.getElementById('expected_loss').value) || 0;
+function readInp(id){
+var p=gp(id);if(!p)return;
+var card=$('.patient-card[data-id="'+id+'"]');
+if(!card)return;
+var fields=card.querySelectorAll('[data-f]');
+for(var i=0;i<fields.length;i++){
+var el=fields[i],fd=el.dataset.f;
+p[fd]=fd==='n'?el.value:(parseFloat(el.value)||0);
+}
+var rows=card.querySelectorAll('.addon-row');
+for(var j=0;j<rows.length;j++){
+var idx=parseInt(rows[j].dataset.idx);
+var ts=rows[j].querySelector('.addon-type');
+var vs=rows[j].querySelector('.addon-vol');
+if(p.ao[idx]){p.ao[idx].t=ts.value;p.ao[idx].v=parseFloat(vs.value)||0}
+}
+}
 
-        // Validate
-        const errBox = document.getElementById('error-box');
-        let errs = [];
-        if (!weight || weight <= 0) errs.push('Patient weight must be a positive number.');
-        if (!tpnVol || tpnVol <= 0) errs.push('TPN volume target must be a positive number.');
-        if (tGIR === null || tGIR === undefined || tGIR < 0) errs.push('Target GIR must be 0 or greater.');
-        if (lipDose === null || lipDose === undefined || lipDose < 0) errs.push('Lipid dose must be 0 or greater.');
-        if (aaDose === null || aaDose === undefined || aaDose < 0) errs.push('Amino acid dose must be 0 or greater.');
+function addPt(){
+S.pts.push({id:S.nid++,n:'',w:0,fi:0,tv:0,gir:0,ld:0,ad:0,tf:0,loss:10,ao:[],col:false,rc:false,r:null});
+renderAll();
+}
 
-        if (errs.length) {
-            errBox.className = '';
-            errBox.innerHTML = errs.map(e => `<div class="ecard"><i class="fas fa-triangle-exclamation mt-0.5 flex-shrink-0"></i><span>${e}</span></div>`).join('');
-            clearResults();
-            return;
-        }
+function rmPt(id){S.pts=S.pts.filter(function(p){return p.id!==id});renderAll()}
 
-        // Brand constants
-        let gBasePct, aaBasePct, lipBasePct, naF, kF, clF, caF, bLabel;
-        switch (brand) {
-            case 'Smofkabevin':
-                gBasePct=13; aaBasePct=10; lipBasePct=20;
-                naF=0.079; kF=0.06; clF=0.07; caF=0.005;
-                bLabel='Smofkabiven'; break;
-            case 'Kabevin':
-                gBasePct=11; aaBasePct=11.3; lipBasePct=20;
-                naF=0.1; kF=0.08; clF=0.156; caF=0.006;
-                bLabel='Kabiven'; break;
-            case 'Periolimel':
-                gBasePct=18.75; aaBasePct=6.3; lipBasePct=15;
-                naF=0.0525; kF=0.04; clF=0.0617; caF=0.005;
-                bLabel='Periolimel'; break;
-        }
+function togglePt(id){
+var p=gp(id);if(!p)return;p.col=!p.col;
+var card=$('.patient-card[data-id="'+id+'"]');if(!card)return;
+card.querySelector('.chev').classList.toggle('open',!p.col);
+card.querySelector('.card-body').style.display=p.col?'none':'block';
+}
 
-        // Show brand constants
-        document.getElementById('brand-constants').innerHTML = `
-            <div class="vr"><span class="vl">Glucose (brand base)</span><span><span class="vn">${gBasePct}</span><span class="vu">%</span></span></div>
-            <div class="vr"><span class="vl">Amino Acid (brand base)</span><span><span class="vn">${aaBasePct}</span><span class="vu">%</span></span></div>
-            <div class="vr"><span class="vl">Lipid (brand base)</span><span><span class="vn">${lipBasePct}</span><span class="vu">%</span></span></div>
-            <div class="border-t border-slate-100 my-2"></div>
-            <div class="vr"><span class="vl">Na factor</span><span class="vn" style="font-size:0.8rem;">${naF}</span></div>
-            <div class="vr"><span class="vl">K factor</span><span class="vn" style="font-size:0.8rem;">${kF}</span></div>
-            <div class="vr"><span class="vl">Cl factor</span><span class="vn" style="font-size:0.8rem;">${clF}</span></div>
-            <div class="vr"><span class="vl">Ca factor</span><span class="vn" style="font-size:0.8rem;">${caF}</span></div>
-        `;
+function showRm(id){
+var p=gp(id);if(!p)return;p.rc=true;
+var el=$('.rm-confirm[data-id="'+id+'"]');if(el)el.style.display='flex';
+}
 
-        // ===== BASE VOLUMES & DOSES =====
-        const feedMlKg    = totFeed / weight;
-        const lipVolBase  = (lipDose * weight * 100) / lipBasePct;
-        const aaVolBase   = (aaDose * weight * 100) / aaBasePct;
-        const gluVolBase  = tpnVol - lipVolBase - aaVolBase;
-        const gluGrams    = tGIR * 1440 * weight / 1000;
+function hideRm(id){
+var p=gp(id);if(!p)return;p.rc=false;
+var el=$('.rm-confirm[data-id="'+id+'"]');if(el)el.style.display='none';
+}
 
-        // Check glucose volume
-        let gluErr = false;
-        if (gluVolBase <= 0) {
-            gluErr = true;
-            errBox.className = '';
-            errBox.innerHTML = `<div class="ecard"><i class="fas fa-triangle-exclamation mt-0.5 flex-shrink-0"></i><div><strong>Insufficient TPN Volume</strong><br>Lipid (${f(lipVolBase,1)} ml) + Amino Acid (${f(aaVolBase,1)} ml) = ${f(lipVolBase+aaVolBase,1)} ml exceeds target TPN volume (${tpnVol} ml). Increase TPN volume or decrease doses.</div></div>`;
-        } else {
-            errBox.className = 'hidden';
-            errBox.innerHTML = '';
-        }
+function addAO(id){
+readInp(id);var p=gp(id);if(!p)return;
+p.ao.push({t:'na3',v:0});renderCardById(id);
+}
 
-        const tgtGluPct = gluVolBase > 0 ? (gluGrams / gluVolBase) * 100 : 0;
+function rmAO(id,idx){
+readInp(id);var p=gp(id);if(!p)return;
+p.ao.splice(idx,1);renderCardById(id);
+}
 
-        // ===== GLUCOSE MIXING (Pearson Square) =====
-        let vGBB = 0, vG5 = 0, vG50 = 0, mixDesc = '';
-        if (!gluErr) {
-            if (tgtGluPct >= gBasePct && tgtGluPct <= 50) {
-                vGBB = Math.abs(tgtGluPct - 50) / (50 - gBasePct) * gluVolBase;
-                vG5  = 0;
-                vG50 = Math.abs(tgtGluPct - gBasePct) / (50 - gBasePct) * gluVolBase;
-                mixDesc = `${bLabel} (${gBasePct}%) + D50W (50%)`;
-            } else if (tgtGluPct >= 5 && tgtGluPct < gBasePct) {
-                vGBB = 0;
-                vG5  = Math.abs(tgtGluPct - 50) / (50 - 5) * gluVolBase;
-                vG50 = Math.abs(tgtGluPct - 5) / (50 - 5) * gluVolBase;
-                mixDesc = 'D5W (5%) + D50W (50%)';
-            } else if (tgtGluPct < 5) {
-                vGBB = 0;
-                vG5  = gluVolBase;
-                vG50 = 0;
-                mixDesc = 'D5W (5%) only — minimum glucose concentration';
-            } else {
-                vGBB = 0;
-                vG5  = 0;
-                vG50 = gluVolBase;
-                mixDesc = 'D50W (50%) only — maximum glucose concentration';
-            }
-        }
+function renderCardById(id){
+readInp(id);var p=gp(id);if(!p)return;
+p.rc=false;p.r=calc(p);
+var card=$('.patient-card[data-id="'+id+'"]');if(!card)return;
+var tmp=document.createElement('div');tmp.innerHTML=renderCard(p);
+var nc=tmp.firstElementChild;
+nc.querySelector('.card-body').style.display=p.col?'none':'block';
+nc.querySelector('.chev').classList.toggle('open',!p.col);
+card.replaceWith(nc);
+}
 
-        // ===== ELECTROLYTES (from aaVolBase) =====
-        const Na  = naF * aaVolBase;
-        const K   = kF  * aaVolBase;
-        const Cl  = clF * aaVolBase;
-        const Ca  = caF * aaVolBase;
+function recalc(id){
+var p=gp(id);if(!p)return;
+p.r=calc(p);updRes(id);
+}
 
-        // ===== NUTRITIONAL STATS (base values) =====
-        let actGIR=0, gluPctTot=0, energy=0, lcRatio=0, aaPct=0, npcn=0, osm=0;
-        if (!gluErr) {
-            actGIR    = gluGrams * 1000 / (1440 * weight);
-            gluPctTot = (gluGrams * 100) / tpnVol;
-            energy    = ((lipDose * weight * 9) + (aaDose * weight * 4) + (gluGrams * 3.4)) / weight;
-            const carbE = gluGrams * 3.4;
-            const lipE  = lipDose * weight * 9;
-            lcRatio   = (carbE + lipE) > 0 ? (lipE / (carbE + lipE)) * 100 : 0;
-            aaPct     = (aaDose * weight) / tpnVol * 100;
-            const nG  = (aaDose * weight) / 6.25;
-            npcn      = nG > 0 ? ((lipDose * weight * 9) + (gluGrams * 3.4)) / nG : 0;
-            osm       = ((aaDose * weight * 10) + (gluGrams * 5) + ((Na + K) * 2) + (Ca * 2 * 1.4)) / (tpnVol / 1000);
-        }
+function recalcAll(){S.pts.forEach(function(p){p.r=calc(p)});renderAll()}
 
-        // ===== WARNINGS (base values) =====
-        const warns = [];
-        if (!gluErr) {
-            if (tgtGluPct < 5)  warns.push('This is the lowest GIR you can obtain.');
-            if (tgtGluPct > 50) warns.push('Try increasing TPN volume. This is the highest GIR you can obtain.');
-            if (gluPctTot > 12) warns.push('Consider using central line OR lower the concentration by lowering the GIR or increasing total volume.');
-        }
-        if (feedMlKg >= 100) warns.push('PN can be discontinued when enteral feeds reach 100 to 120 mL/kg/d.');
-        if (feedMlKg > 60 && feedMlKg <= 99) warns.push('Condensing PN to 80 to 90 mL/kg/d when enteral feeds reach 60 mL/kg/d helps maintain appropriate caloric intake. This can be accomplished by decreasing lipids to 1 g/kg/d, continuing full goal protein, and leaving dextrose concentrations the same.');
+function printAll(){
+var b=B[S.brand];
+var valid=S.pts.filter(function(p){return p.r&&!p.r.errs.length});
+if(!valid.length){alert('No patients with valid calculations to print.');return}
+var pts=valid;
+var aoTypes=new Set();
+pts.forEach(function(p){p.ao.forEach(function(a){if(a.v>0)aoTypes.add(a.t)})});
+var aoList=Array.from(aoTypes);
+var h='<div class="ph">TPN Preparation Sheet — '+b.l+'</div>';
+h+='<div class="ps">Date: '+S.date+' &nbsp;|&nbsp; Patients: '+pts.length+'</div>';
+h+='<table class="pt"><thead><tr><th>Metric</th>';
+pts.forEach(function(p){h+='<th>'+escH(p.n||'Patient '+p.id)+'<br><span style="font-weight:400;text-transform:none;letter-spacing:0">'+f(p.w,1)+' kg</span></th>'});
+h+='</tr></thead><tbody>';
+h+='<tr class="gr"><td colspan="'+(pts.length+1)+'">Inputs</td></tr>';
+h+=prow('Weight (kg)',pts,function(p){return f(p.w,1)});
+h+=prow('TPN Target Vol (ml)',pts,function(p){return Math.round(p.r.tv)});
+h+=prow('Target GIR (mg/kg/min)',pts,function(p){return f(p.gir,1)});
+h+=prow('Lipid Dose (g/kg)',pts,function(p){return f(p.ld,1)});
+h+=prow('AA Dose (g/kg)',pts,function(p){return f(p.ad,1)});
+h+=prow('Enteral Feeding (ml)',pts,function(p){return Math.round(p.tf)});
+h+=prow('Expected Loss (ml)',pts,function(p){return p.loss});
+h+='<tr class="gr"><td colspan="'+(pts.length+1)+'">Preparation Volumes</td></tr>';
+h+=prow('Lipid (ml)',pts,function(p){return p.r.pl});
+h+=prow('Amino Acid (ml)',pts,function(p){return p.r.pa});
+h+=prow('Glucose — '+b.l+' '+b.g+'% (ml)',pts,function(p){return p.r.pb});
+h+=prow('Glucose — D5W 5% (ml)',pts,function(p){return p.r.p5});
+h+=prow('Glucose — D50W 50% (ml)',pts,function(p){return p.r.p50});
+aoList.forEach(function(t){
+h+=prow('Add-on: '+AT[t].l+' (ml)',pts,function(p){
+var total=p.r.pao.filter(function(a){return a.t===t}).reduce(function(s,a){return s+a.v},0);
+return total>0?total:'—'});
+});
+h+=prow('Total Prep Vol (ml)',pts,function(p){return p.r.ptot},true);
+h+=prow('Bags',pts,function(p){return p.r.split?'2':'1'});
+h+='<tr class="gr"><td colspan="'+(pts.length+1)+'">Electrolytes (mmol)</td></tr>';
+h+=prow('Na',pts,function(p){return f(p.r.Na,2)});
+h+=prow('K',pts,function(p){return f(p.r.K,2)});
+h+=prow('Cl',pts,function(p){return f(p.r.Cl,2)});
+h+=prow('Ca',pts,function(p){return f(p.r.Ca,2)});
+h+='<tr class="gr"><td colspan="'+(pts.length+1)+'">Clinical</td></tr>';
+h+=prow('Osmolarity (mOsm/L)',pts,function(p){return Math.round(p.r.osm)});
+h+=prow('Energy (kcal/kg)',pts,function(p){return f(p.r.en,1)});
+h+=prow('NPC:N Ratio',pts,function(p){return f(p.r.npc,1)});
+h+=prow('Lipid:Carb Ratio (%)',pts,function(p){return f(p.r.lcr,1)});
+h+=prow('Actual GIR (mg/kg/min)',pts,function(p){return f(p.r.agir,2)});
+h+='</tbody></table>';
+ $('#print-view').innerHTML=h;window.print();
+}
 
-        // ===== PHARMACY PREP (apply loss) =====
-        const lossMul   = tpnVol > 0 ? 1 + (expLoss / tpnVol) : 1;
-        const prepTotal = tpnVol + expLoss;
-        const pLip      = lipVolBase * lossMul;
-        const pAA       = aaVolBase * lossMul;
-        const pGBB      = vGBB * lossMul;
-        const pG5       = vG5  * lossMul;
-        const pG50      = vG50 * lossMul;
+function prow(label,pts,fn,bold){
+var h='<tr'+(bold?' class="tr"':'')+'><td>'+label+'</td>';
+pts.forEach(function(p){
+if(!p.r||p.r.errs.length){h+='<td class="err-cell">Error</td>'}
+else{h+='<td>'+fn(p)+'</td>'}
+});
+h+='</tr>';return h;
+}
 
-        // ===== UPDATE UI =====
-        // Patient summary
-        sv('r-feed-kg',    f(feedMlKg, 1));
-        sv('r-lip-vol',    f(lipVolBase, 1));
-        sv('r-aa-vol',     f(aaVolBase, 1));
-        sv('r-glu-vol',    f(gluVolBase, 1));
-        sv('r-glu-g',      f(gluGrams, 1));
-        sv('r-tgt-glu-pct',f(tgtGluPct, 2));
+/* ===== EVENTS ===== */
+ $('#pc').addEventListener('input',function(e){
+var card=e.target.closest('.patient-card');
+if(!card)return;
+var id=parseInt(card.dataset.id);
+if(e.target.dataset.f){
+var p=gp(id);if(!p)return;
+var fd=e.target.dataset.f;
+p[fd]=fd==='n'?e.target.value:(parseFloat(e.target.value)||0);
+recalc(id);return;
+}
+if(e.target.classList.contains('addon-vol')){
+var idx=parseInt(e.target.dataset.idx);
+var p2=gp(id);if(!p2||!p2.ao[idx])return;
+p2.ao[idx].v=parseFloat(e.target.value)||0;
+recalc(id);return;
+}
+});
 
-        if (gluErr) {
-            ['r-act-gir','r-glu-pct-tot','r-energy','r-lc-ratio','r-aa-pct','r-npcn','r-osm'].forEach(id => sv(id, '—'));
-        } else {
-            sv('r-act-gir',    f(actGIR, 2));
-            sv('r-glu-pct-tot',f(gluPctTot, 2));
-            sv('r-energy',     f(energy, 1));
-            sv('r-lc-ratio',   f(lcRatio, 1));
-            sv('r-aa-pct',     f(aaPct, 2));
-            sv('r-npcn',       f(npcn, 1));
-            sv('r-osm',        f(osm, 0));
-        }
+ $('#pc').addEventListener('change',function(e){
+if(!e.target.classList.contains('addon-type'))return;
+var card=e.target.closest('.patient-card');if(!card)return;
+var id=parseInt(card.dataset.id);
+var idx=parseInt(e.target.dataset.idx);
+var p=gp(id);if(!p||!p.ao[idx])return;
+p.ao[idx].t=e.target.value;recalc(id);
+});
 
-        // Glucose mixing
-        updateGluMix(vGBB, vG5, vG50, gluVolBase, mixDesc, gluErr, gBasePct, bLabel);
+ $('#pc').addEventListener('click',function(e){
+var card=e.target.closest('.patient-card');
+if(!card)return;
+var id=parseInt(card.dataset.id);
 
-        // Electrolytes
-        updateElec(Na, K, Cl, Ca);
+var lossBtn=e.target.closest('.loss-sel button');
+if(lossBtn){
+var lv=parseInt(lossBtn.dataset.lv);
+var p=gp(id);if(!p)return;
+p.loss=lv;
+var btns=card.querySelectorAll('.loss-sel button');
+for(var i=0;i<btns.length;i++){btns[i].classList.toggle('on',parseInt(btns[i].dataset.lv)===lv)}
+recalc(id);return;
+}
 
-        // Warnings
-        const wBox = document.getElementById('warn-box');
-        if (warns.length) {
-            wBox.innerHTML = warns.map(w => `<div class="wcard"><i class="fas fa-exclamation-circle mt-0.5 flex-shrink-0"></i><span>${w}</span></div>`).join('');
-        } else {
-            wBox.innerHTML = `<div class="flex items-center gap-2 text-xs py-2 px-1" style="color:#059669;"><i class="fas fa-check-circle"></i> No clinical warnings for current parameters.</div>`;
-        }
+var act=e.target.closest('[data-act]');
+if(!act)return;
+var a=act.dataset.act;
+if(a==='toggle'){togglePt(id);return}
+if(a==='rm'){e.stopPropagation();showRm(id);return}
+if(a==='rm-y'){e.stopPropagation();rmPt(id);return}
+if(a==='rm-n'){e.stopPropagation();hideRm(id);return}
+if(a==='add-ao'){e.stopPropagation();addAO(id);return}
+if(a==='rm-ao'){e.stopPropagation();rmAO(id,parseInt(act.dataset.idx));return}
+});
 
-        // Pharmacy
-        updatePharm(prepTotal, pLip, pAA, pGBB, pG5, pG50, gluErr, bLabel, gBasePct, lipBasePct, aaBasePct, lossMul, expLoss, tpnVol);
-    }
+ $('#g-date').value=S.date;
+ $('#g-date').addEventListener('change',function(){S.date=this.value});
+ $('#g-brand').addEventListener('change',function(){S.brand=this.value;recalcAll()});
+ $('#btn-add').addEventListener('click',addPt);
+ $('#btn-print').addEventListener('click',printAll);
 
-    /* ===== Set value with pulse ===== */
-    function sv(id, val) {
-        const el = document.getElementById(id);
-        if (!el) return;
-        const changed = el.textContent !== val;
-        el.textContent = val;
-        if (changed) {
-            el.classList.remove('vpulse');
-            void el.offsetWidth; // reflow
-            el.classList.add('vpulse');
-        }
-    }
-
-    /* ===== Clear results on validation error ===== */
-    function clearResults() {
-        ['r-feed-kg','r-lip-vol','r-aa-vol','r-glu-vol','r-glu-g','r-tgt-glu-pct',
-         'r-act-gir','r-glu-pct-tot','r-energy','r-lc-ratio','r-aa-pct','r-npcn','r-osm'
-        ].forEach(id => sv(id, '—'));
-        document.getElementById('glu-mix-area').innerHTML = '<p class="text-sm" style="color:var(--muted);">Enter valid parameters to calculate glucose mixing.</p>';
-        document.getElementById('elec-grid').innerHTML = '';
-        document.getElementById('warn-box').innerHTML = '';
-        document.getElementById('pharm-area').innerHTML = '<p class="text-sm text-green-700">Enter valid parameters to generate pharmacy preparation volumes.</p>';
-    }
-
-    /* ===== Glucose Mixing Visual ===== */
-    function updateGluMix(vBB, v5, v50, total, desc, err, gPct, bLabel) {
-        const area = document.getElementById('glu-mix-area');
-        if (err) {
-            area.innerHTML = '<p class="text-sm" style="color:var(--muted);">Cannot calculate — insufficient glucose volume.</p>';
-            return;
-        }
-
-        // Percentages for bar
-        const pBB  = total > 0 ? (vBB / total) * 100 : 0;
-        const p5   = total > 0 ? (v5  / total) * 100 : 0;
-        const p50  = total > 0 ? (v50 / total) * 100 : 0;
-
-        let barHTML = '<div class="gbar">';
-        if (vBB > 0) barHTML += `<div style="width:${pBB}%;background:#0F766E;">${pBB >= 8 ? f(pBB,1)+'%' : ''}</div>`;
-        if (v5 > 0)  barHTML += `<div style="width:${p5}%;background:#0284C7;">${p5 >= 8 ? f(p5,1)+'%' : ''}</div>`;
-        if (v50 > 0) barHTML += `<div style="width:${p50}%;background:#D97706;">${p50 >= 8 ? f(p50,1)+'%' : ''}</div>`;
-        barHTML += '</div>';
-
-        // Legend
-        let legend = '<div class="flex flex-wrap gap-x-5 gap-y-1 mt-2 mb-3">';
-        if (vBB > 0) legend += `<span class="flex items-center gap-1.5 text-xs"><span class="w-2.5 h-2.5 rounded-sm inline-block" style="background:#0F766E;"></span>${bLabel} (${gPct}%)</span>`;
-        if (v5 > 0)  legend += `<span class="flex items-center gap-1.5 text-xs"><span class="w-2.5 h-2.5 rounded-sm inline-block" style="background:#0284C7;"></span>D5W (5%)</span>`;
-        if (v50 > 0) legend += `<span class="flex items-center gap-1.5 text-xs"><span class="w-2.5 h-2.5 rounded-sm inline-block" style="background:#D97706;"></span>D50W (50%)</span>`;
-        legend += '</div>';
-
-        // Table
-        let tbl = `<table class="w-full text-sm" style="border-collapse:collapse;"><thead><tr>
-            <th class="text-left py-1.5 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider" style="border-bottom:1px solid var(--border);">Source</th>
-            <th class="text-right py-1.5 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider" style="border-bottom:1px solid var(--border);">Volume (ml)</th>
-            <th class="text-right py-1.5 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider" style="border-bottom:1px solid var(--border);">Share</th>
-        </tr></thead><tbody>`;
-        if (vBB > 0) tbl += `<tr><td class="py-1.5 px-3" style="border-bottom:1px solid #F1F5F9;">${bLabel} (${gPct}%)</td><td class="text-right py-1.5 px-3 font-display font-semibold" style="border-bottom:1px solid #F1F5F9;">${f(vBB,1)}</td><td class="text-right py-1.5 px-3" style="border-bottom:1px solid #F1F5F9;color:var(--muted);">${f(pBB,1)}%</td></tr>`;
-        if (v5 > 0)  tbl += `<tr><td class="py-1.5 px-3" style="border-bottom:1px solid #F1F5F9;">D5W (5%)</td><td class="text-right py-1.5 px-3 font-display font-semibold" style="border-bottom:1px solid #F1F5F9;">${f(v5,1)}</td><td class="text-right py-1.5 px-3" style="border-bottom:1px solid #F1F5F9;color:var(--muted);">${f(p5,1)}%</td></tr>`;
-        if (v50 > 0) tbl += `<tr><td class="py-1.5 px-3" style="border-bottom:1px solid #F1F5F9;">D50W (50%)</td><td class="text-right py-1.5 px-3 font-display font-semibold" style="border-bottom:1px solid #F1F5F9;">${f(v50,1)}</td><td class="text-right py-1.5 px-3" style="border-bottom:1px solid #F1F5F9;color:var(--muted);">${f(p50,1)}%</td></tr>`;
-        tbl += `<tr><td class="py-1.5 px-3 font-semibold">Total Glucose</td><td class="text-right py-1.5 px-3 font-display font-bold">${f(total,1)}</td><td class="text-right py-1.5 px-3 font-semibold">100%</td></tr>`;
-        tbl += '</tbody></table>';
-
-        area.innerHTML = `
-            <p class="text-xs font-semibold mb-2" style="color:var(--accent);">${desc}</p>
-            ${barHTML}${legend}${tbl}
-        `;
-    }
-
-    /* ===== Electrolytes ===== */
-    function updateElec(Na, K, Cl, Ca) {
-        const data = [
-            { label:'Sodium', sym:'Na', val:Na, color:'#0F766E', bg:'#F0FDFA' },
-            { label:'Potassium', sym:'K', val:K, color:'#7C3AED', bg:'#F5F3FF' },
-            { label:'Chloride', sym:'Cl', val:Cl, color:'#0284C7', bg:'#F0F9FF' },
-            { label:'Calcium', sym:'Ca', val:Ca, color:'#D97706', bg:'#FFFBEB' },
-        ];
-        document.getElementById('elec-grid').innerHTML = data.map(d => `
-            <div class="ecard-mini" style="border-top:3px solid ${d.color};">
-                <div class="elabel" style="color:${d.color};">${d.sym}</div>
-                <div class="eval" style="color:${d.color};">${f(d.val, 2)}</div>
-                <div class="eunit">mmol</div>
-            </div>
-        `).join('');
-    }
-
-    /* ===== Pharmacy Table ===== */
-    function updatePharm(total, pLip, pAA, pGBB, pG5, pG50, err, bLabel, gPct, lipPct, aaPct, lossMul, expLoss, tpnVol) {
-        const area = document.getElementById('pharm-area');
-        if (err) {
-            area.innerHTML = '<p class="text-sm text-green-700">Cannot generate — insufficient glucose volume for preparation.</p>';
-            return;
-        }
-
-        let rows = '';
-        rows += `<tr><td>Lipid Emulsion</td><td>${bLabel} (${lipPct}%)</td><td class="text-right font-display font-semibold">${f(pLip,1)}</td></tr>`;
-        rows += `<tr><td>Amino Acid</td><td>${bLabel} (${aaPct}%)</td><td class="text-right font-display font-semibold">${f(pAA,1)}</td></tr>`;
-        if (pGBB > 0) rows += `<tr><td>Glucose</td><td>${bLabel} base (${gPct}%)</td><td class="text-right font-display font-semibold">${f(pGBB,1)}</td></tr>`;
-        if (pG5 > 0)  rows += `<tr><td>Glucose</td><td>D5W (5%)</td><td class="text-right font-display font-semibold">${f(pG5,1)}</td></tr>`;
-        if (pG50 > 0) rows += `<tr><td>Glucose</td><td>D50W (50%)</td><td class="text-right font-display font-semibold">${f(pG50,1)}</td></tr>`;
-        rows += `<tr class="tot"><td colspan="2">Total Preparation Volume</td><td class="text-right font-display">${f(total,1)}</td></tr>`;
-
-        area.innerHTML = `
-            <div class="flex flex-wrap gap-x-6 gap-y-1 mb-3 text-xs text-green-800">
-                <span><strong>Base Volume:</strong> ${tpnVol} ml</span>
-                <span><strong>Expected Loss:</strong> ${expLoss} ml</span>
-                <span><strong>Loss Multiplier:</strong> ${f(lossMul,4)}</span>
-            </div>
-            <table class="ptbl">
-                <thead><tr><th>Component</th><th>Source</th><th class="text-right">Volume (ml)</th></tr></thead>
-                <tbody>${rows}</tbody>
-            </table>
-        `;
-    }
-
-    /* ===== Initial calculation on load ===== */
-    calculate();
-    </script>
+addPt();
+</script>
 </body>
 </html>
