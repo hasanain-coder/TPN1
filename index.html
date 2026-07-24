@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>TPN Calculator</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
@@ -521,9 +522,8 @@ else{h+='<td>'+fn(p)+'</td>'}
 h+='</tr>';return h;
 }
 
-/* ===== LABEL PDF — Hybrid html2canvas + jsPDF ===== */
+/* ===== LABEL PDF — html2canvas + jsPDF (separate libraries) ===== */
 
-/* Label table row: Arabic name, English translation, value */
 function lr(ar,en,val){
 return '<tr style="border-bottom:0.3mm solid #000;">'+
 '<td style="padding:2px 0;vertical-align:top;width:48%;font-size:9px;line-height:1.3;font-family:Arial,Helvetica,sans-serif;">'+
@@ -535,8 +535,15 @@ return '<tr style="border-bottom:0.3mm solid #000;">'+
 }
 
 function generateLabels(){
-if(typeof html2canvas==='undefined'||typeof window.jspdf==='undefined'){
-alert('PDF library not loaded. Please check your internet connection and refresh.');return;
+var h2cOk=typeof html2canvas!=='undefined';
+var jsPdfOk=typeof window.jspdf!=='undefined';
+
+if(!h2cOk||!jsPdfOk){
+var miss=[];
+if(!h2cOk)miss.push('html2canvas');
+if(!jsPdfOk)miss.push('jsPDF');
+alert('Required library not loaded: '+miss.join(', ')+'.\n\nPlease check your internet connection and refresh the page.');
+return;
 }
 
 var selected=S.pts.filter(function(p){return p.lbl!==false&&p.r&&!p.r.errs.length&&p.r.ptot>0});
@@ -552,7 +559,7 @@ overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.35);z-inde
 overlay.innerHTML='<div style="background:#fff;border-radius:10px;padding:20px 32px;font-size:14px;font-weight:600;color:#333;box-shadow:0 8px 30px rgba(0,0,0,0.18);display:flex;align-items:center;gap:10px;"><i class="fas fa-spinner fa-spin" style="color:#0F766E;font-size:18px;"></i> Generating labels...</div>';
 document.body.appendChild(overlay);
 
-/* Render area: in-viewport but behind everything so html2canvas can see it */
+/* Render area: in-viewport, behind everything, so html2canvas can capture it */
 var renderArea=document.createElement('div');
 renderArea.style.cssText='position:fixed;top:0;left:0;z-index:-1;pointer-events:none;';
 document.body.appendChild(renderArea);
@@ -606,12 +613,12 @@ subtitle:bagNamesAr[i]||''
 }
 });
 
-/* Render labels one-by-one to canvas, then assemble PDF */
+/* Render labels sequentially: one DOM element at a time */
 var canvases=[];
 var bagIdx=0;
 
-function renderNextLabel(){
-if(bagIdx>=bags.length){buildPDF();return}
+function renderNext(){
+if(bagIdx>=bags.length){assemblePDF();return}
 var d=bags[bagIdx];
 var el=document.createElement('div');
 el.style.cssText='width:227px;border:1px solid #000;padding:6px;font-family:Arial,Helvetica,sans-serif;direction:rtl;background:#fff;';
@@ -636,17 +643,22 @@ lr('\u062A\u0639\u0644\u064A\u0645\u0627\u062A \u0627\u0644\u062A\u0633\u0631\u0
 renderArea.appendChild(el);
 bagIdx++;
 
-html2canvas(el,{scale:4,backgroundColor:'#ffffff',useCORS:true,logging:false}).then(function(canvas){
+html2canvas(el,{
+scale:4,
+backgroundColor:'#ffffff',
+useCORS:true,
+logging:false
+}).then(function(canvas){
 renderArea.removeChild(el);
 canvases.push(canvas);
-renderNextLabel();
+renderNext();
 }).catch(function(){
 if(el.parentNode)renderArea.removeChild(el);
-renderNextLabel();
+renderNext();
 });
 }
 
-function buildPDF(){
+function assemblePDF(){
 document.body.removeChild(renderArea);
 if(!canvases.length){
 var ol=document.getElementById('lbl-loading');if(ol)document.body.removeChild(ol);
@@ -661,9 +673,10 @@ if(i>0)doc.addPage();
 var imgData=canvas.toDataURL('image/jpeg',0.95);
 var imgWmm=60;
 var imgHmm=(canvas.height/canvas.width)*imgWmm;
-/* Scale down if label is taller than page (with 8mm margin) */
+/* Scale down if label is taller than page with 8mm margin */
 if(imgHmm>281){
-imgWmm=imgWmm*(281/imgHmm);
+var sc=281/imgHmm;
+imgWmm=imgWmm*sc;
 imgHmm=281;
 }
 var x=(210-imgWmm)/2;
@@ -678,7 +691,7 @@ alert('Error creating PDF: '+err.message);
 var ol=document.getElementById('lbl-loading');if(ol)document.body.removeChild(ol);
 }
 
-renderNextLabel();
+renderNext();
 }
 
 /* ===== EVENTS ===== */
