@@ -192,6 +192,9 @@ var ng=(p.ad*p.w)/6.25;
 var npc=ng>0?(le+ce)/ng:0;
 var osm=((p.ad*p.w*10)+(actualGG*5)+((Na+K)*2)+(Ca*2*1.4))/(tv/1000);
 
+/* Total Fluid/kg = (TPN target + treatment vol + enteral feeding) / weight */
+var tfkg=(tv+p.tv+p.tf)/p.w;
+
 var lm=1+(el/tv);
 var rawTot=(lv+av+vb+v5+v50)*lm;
 var aoRaw=p.ao.reduce(function(s,a){return s+(parseFloat(a.v)||0)*lm},0);
@@ -233,7 +236,7 @@ var fmk=p.tf/p.w;
 if(fmk>=100)w.push('PN can be discontinued when enteral feeds reach 100 to 120 mL/kg/d.');
 if(fmk>60&&fmk<=99)w.push('Condensing PN to 80 to 90 mL/kg/d when enteral feeds reach 60 mL/kg/d helps maintain appropriate caloric intake. This can be accomplished by decreasing lipids to 1 g/kg/d, continuing full goal protein, and leaving dextrose concentrations the same.');
 
-return{tv:tv,lv:lv,av:av,gv:gv,gg:gg,tgp:tgp,vb:vb,v5:v5,v50:v50,actualGG:actualGG,Na:Na,K:K,Cl:Cl,Ca:Ca,aNa:aNa,aK:aK,agir:agir,gpt:gpt,en:en,lcr:lcr,ap:ap,npc:npc,osm:osm,pl:pl,pa:pa,pb:pb,p5:p5,p50:p50,pao:pao,paot:paot,ptot:ptot,lm:lm,split:split,b1t:b1t,b2t:b2t,b1ao:b1ao,w:w,fmk:fmk,errs:[]};
+return{tv:tv,lv:lv,av:av,gv:gv,gg:gg,tgp:tgp,vb:vb,v5:v5,v50:v50,actualGG:actualGG,Na:Na,K:K,Cl:Cl,Ca:Ca,aNa:aNa,aK:aK,agir:agir,gpt:gpt,en:en,lcr:lcr,ap:ap,npc:npc,osm:osm,tfkg:tfkg,pl:pl,pa:pa,pb:pb,p5:p5,p50:p50,pao:pao,paot:paot,ptot:ptot,lm:lm,split:split,b1t:b1t,b2t:b2t,b1ao:b1ao,w:w,fmk:fmk,errs:[]};
 }
 
 function renderAll(){
@@ -321,6 +324,7 @@ h+=sr('Lipid:Carb',f(r.lcr,1),'%');
 h+=sr('AA %',f(r.ap,2),'%');
 h+=sr('NPC:N',f(r.npc,1),'kcal:N');
 h+=sr('Osmolarity',f(r.osm,0),'mOsm/L');
+h+=sr('Total Fluid/kg',f(r.tfkg,1),'ml/kg');
 h+='</div>';
 h+='<div class="sec-t">Electrolytes</div>';
 h+='<div class="elec-row">';
@@ -509,6 +513,7 @@ h+=prow('Energy (kcal/kg)',pts,function(p){return f(p.r.en,1)});
 h+=prow('NPC:N Ratio',pts,function(p){return f(p.r.npc,1)});
 h+=prow('Lipid:Carb Ratio (%)',pts,function(p){return f(p.r.lcr,1)});
 h+=prow('Actual GIR (mg/kg/min)',pts,function(p){return f(p.r.agir,2)});
+h+=prow('Total Fluid/kg (ml/kg)',pts,function(p){return f(p.r.tfkg,1)});
 h+='</tbody></table>';
  $('#print-view').innerHTML=h;window.print();
 }
@@ -522,7 +527,7 @@ else{h+='<td>'+fn(p)+'</td>'}
 h+='</tr>';return h;
 }
 
-/* ===== LABEL PDF — html2canvas + jsPDF (separate libraries) ===== */
+/* ===== LABEL PDF — html2canvas + jsPDF (separate libs), rotated 90° ===== */
 
 function lr(ar,en,val){
 return '<tr style="border-bottom:0.3mm solid #000;">'+
@@ -534,10 +539,21 @@ return '<tr style="border-bottom:0.3mm solid #000;">'+
 '</tr>';
 }
 
+/* Rotate a canvas 90° clockwise */
+function rotateCanvas(src){
+var rotated=document.createElement('canvas');
+rotated.width=src.height;
+rotated.height=src.width;
+var ctx=rotated.getContext('2d');
+ctx.translate(rotated.width/2,rotated.height/2);
+ctx.rotate(Math.PI/2);
+ctx.drawImage(src,-src.width/2,-src.height/2);
+return rotated;
+}
+
 function generateLabels(){
 var h2cOk=typeof html2canvas!=='undefined';
 var jsPdfOk=typeof window.jspdf!=='undefined';
-
 if(!h2cOk||!jsPdfOk){
 var miss=[];
 if(!h2cOk)miss.push('html2canvas');
@@ -552,19 +568,16 @@ if(!selected.length){alert('No checked patients with valid calculations.\n\nChec
 var now=new Date();
 var timeStr=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
 
-/* Loading overlay */
 var overlay=document.createElement('div');
 overlay.id='lbl-loading';
 overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:9999;display:flex;align-items:center;justify-content:center;';
 overlay.innerHTML='<div style="background:#fff;border-radius:10px;padding:20px 32px;font-size:14px;font-weight:600;color:#333;box-shadow:0 8px 30px rgba(0,0,0,0.18);display:flex;align-items:center;gap:10px;"><i class="fas fa-spinner fa-spin" style="color:#0F766E;font-size:18px;"></i> Generating labels...</div>';
 document.body.appendChild(overlay);
 
-/* Render area: in-viewport, behind everything, so html2canvas can capture it */
 var renderArea=document.createElement('div');
 renderArea.style.cssText='position:fixed;top:0;left:0;z-index:-1;pointer-events:none;';
 document.body.appendChild(renderArea);
 
-/* Build per-bag label data */
 var bags=[];
 selected.forEach(function(p){
 var r=p.r;
@@ -613,7 +626,6 @@ subtitle:bagNamesAr[i]||''
 }
 });
 
-/* Render labels sequentially: one DOM element at a time */
 var canvases=[];
 var bagIdx=0;
 
@@ -650,7 +662,8 @@ useCORS:true,
 logging:false
 }).then(function(canvas){
 renderArea.removeChild(el);
-canvases.push(canvas);
+/* Rotate 90° clockwise so label prints sideways */
+canvases.push(rotateCanvas(canvas));
 renderNext();
 }).catch(function(){
 if(el.parentNode)renderArea.removeChild(el);
@@ -671,13 +684,21 @@ var doc=new jsPDF('p','mm','a4');
 canvases.forEach(function(canvas,i){
 if(i>0)doc.addPage();
 var imgData=canvas.toDataURL('image/jpeg',0.95);
-var imgWmm=60;
-var imgHmm=(canvas.height/canvas.width)*imgWmm;
-/* Scale down if label is taller than page with 8mm margin */
-if(imgHmm>281){
-var sc=281/imgHmm;
-imgWmm=imgWmm*sc;
-imgHmm=281;
+/* After rotation: canvas.width = original height, canvas.height = original width */
+var imgWmm=60*(canvas.width/canvas.height);
+var imgHmm=60;
+/* Scale down if the rotated label exceeds page bounds */
+var maxW=297-16;
+var maxH=210-16;
+if(imgWmm>maxW){
+var sc=maxW/imgWmm;
+imgWmm=maxW;
+imgHmm=imgHmm*sc;
+}
+if(imgHmm>maxH){
+var sc2=maxH/imgHmm;
+imgHmm=maxH;
+imgWmm=imgWmm*sc2;
 }
 var x=(210-imgWmm)/2;
 var y=(297-imgHmm)/2;
